@@ -1,26 +1,25 @@
 const Twit = require('twit'); 
 var Gists = require('gists');
+const https = require('https');
 const moment  = require('moment');
 const findHashtags = require('find-hashtags');
 const userMentions = require('get-user-mentions');
 const { convertFile } = require('convert-svg-to-png');
 const _ = require('underscore');
 const async = require("async");
-//const fs = require('fs');
+const fs = require('fs');
 //const junk = require('junk');
 //const path = require('path');
 const request = require("request");
 const rp = require('request-promise');
-//const createSVGBadgePNG = require("./createbadge.js");
-//const fs = require('fs');
-//const path = require('path');
-//const junk = require('junk');
+const convertSvgToPng = require("./svg-to-png.js");
 
 const dotenv = require('dotenv');
 dotenv.config();
 
 const Sentry = require('@sentry/node');
 Sentry.init({ dsn: process.env.SENTRY_DSN });
+
 
 var gistsUsername = process.env.GITHUB_USERNAME;
 
@@ -204,6 +203,8 @@ function processTweets(badges, tweets, callback) {
                     var badgeName = badge.badge.name;
                     var badgeHashtagId = badge.badge.hashtag_id;
 
+                    var streamBadgeImagefile = fs.createWriteStream("badgeImage.svg");
+
                     console.log("BadgeClass Url: "+ badge.badge.id);
                     console.log("Badge Image Url: "+ badge.badge.image);
 
@@ -234,13 +235,37 @@ function processTweets(badges, tweets, callback) {
                                     callback("no earner");
                                 }
                             },
-                            function(callback) {
+                            function(callback) { //evidence_url
 
-                            tweetUrl = "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str;
-                            //console.log("TWEET URL "+tweetUrl);
+                                tweetUrl = "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str;
+                                //console.log("TWEET URL "+tweetUrl);
 
-                            callback(null,tweetUrl);
+                                callback(null,tweetUrl);
 
+                            },
+                            function(callback) { //png of badge image svg
+                                https.get(badge.badge.image,function(response) {
+                                    response.setEncoding('utf8');
+                                
+                                    var body = '';
+                                    response.on('data', function (chunk) {
+                                        body += chunk;
+                                    });
+                                
+                                    badgeSVGFile = response.pipe(streamBadgeImagefile);
+                                    response.on('end', function () {
+                                      //  console.log('BODY: ' + body);
+                                        badgeSVG = body;
+
+                                        convertSvgToPng(body, []).then((png) => {
+                                            const base64data = Buffer.from(png).toString('base64');
+                                            //console.log("here is base64png", base64data);
+
+                                            callback(null,base64data); 
+
+                                        });
+                                    });
+                                });
                             }
                         ],
                         function(err, results) {
@@ -252,6 +277,7 @@ function processTweets(badges, tweets, callback) {
 
                             var earners = results[0];
                             var evidenceUrl = results[1];
+                            var badgeImage = results[2];
 
                             async.each(earners, function(earner, callback) {
                                     
@@ -288,7 +314,7 @@ function processTweets(badges, tweets, callback) {
                                         gists.create(gistOptions).then(function(res){
                                             callback(null, res.body, filename);
                                         }).catch(function(err) {
-                                            //console.log("ERR CREATING "+err);
+                                            console.log("ERR CREATING ASSERTION"+err);
                                             callback(err);
                                         });
                                          
@@ -327,19 +353,43 @@ function processTweets(badges, tweets, callback) {
                                             }).then(function(res){
                                                 callback(null, res.body);
                                         }).catch(function(err) {
-                                            console.log("ERR UPDATING "+err);
+                                            console.log("ERR UPDATING ASSERTION "+err);
                                             callback(err);
                                         });
                                     }
 
                                 ],
                                 function(err, result) {
-                                    console.log("DONE 2 - SEND TWEET");
+                                    console.log("SEND TWEET");
                                     claimUrl = "http://badgebot.io/earned/"+result.id;
-                                    callback();
+                                    msg = "Congratulations @"+earner+"! @"+tweet.user.screen_name+" issued you a #"+badgeHashtagId+". You can view this badge here: "+claimUrl;
+                                    
+                                    /**
+                                    Uploads the badge image and then sends it as part of the status update.
+                                    Future Issue: create a player-card?
+                                    https://developer.twitter.com/en/docs/tweets/optimize-with-cards/overview/player-card
+                                    **/
+
+                                    twit.post('media/upload', { media_data: badgeImage}, function (err, data, response) {
+
+                                        var mediaIdStr = data.media_id_string
+                                        var altText = badgeName+" Image"
+                                        var meta_params = { media_id: mediaIdStr, alt_text: { text: altText } }
+
+                                        twit.post('media/metadata/create', meta_params, function (err, data, response) {
+                                            if (!err) {
+                                                // now we can reference the media and post a tweet (media will attach to the tweet)
+                                                var params = { status: msg, media_ids: [mediaIdStr] }
+ 
+                                                twit.post('statuses/update', params, function (err, data, response) {
+                                                   // console.log(data)
+                                                    callback();
+                                                });
+                                            }
+                                        });
+                                    });
                                 },
                                 function(err,result) {
-                                        console.log("DONE 3");
                                         callback();
                                 });
                             },
@@ -358,12 +408,11 @@ function processTweets(badges, tweets, callback) {
                 }
                 else {
                     console.log("No Badge - send a tweet");
-                   // var params = { status: '@'+tweet.user.screen_name+', did you wish to issue a badge? Learn more about the prototype here: http://badgebot.io', media_ids: [mediaIdStr] }
-                   // T.post('statuses/update', params, function (err, data, response) {
-                      //  //console.log(data)
-                    //callback();
-                    //});
-                    callback();
+                    var params = { status: '@'+tweet.user.screen_name+', did you wish to issue a badge? Learn more about BadgeBot here: https://badgebot.io' }
+                    twit.post('statuses/update', params, function (err, data, response) {
+                       // console.log(data)
+                        callback();
+                    });
                 }            
             });
         },
