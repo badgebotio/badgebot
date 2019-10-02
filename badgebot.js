@@ -145,10 +145,13 @@ function getTweets(badges, callback) {
                         }
                     })
                     .then(function(res) {
-                       // console.log(res);
+                       // console.log(res.body);
                         callback(null, badges,tweets);
                     })
-                    .catch(console.error);
+                    .catch(function(err) {
+                        console.log("ERR UPDATING LAST TWEET "+err);
+                        callback(err);
+                    });
                 }
                 else {
 
@@ -205,7 +208,7 @@ function processTweets(badges, tweets, callback) {
                     console.log("Badge Image Url: "+ badge.badge.image);
 
                     if (badge.command == "issue") {
-                        console.log("Issue badge");
+                        console.log("Issue badge: "+badgeName);
 
                         /** 
                         Get earners
@@ -232,115 +235,135 @@ function processTweets(badges, tweets, callback) {
                                 }
                             },
                             function(callback) {
-                                async.each(earners, function(earner, callback) {
-                                    /** 
-                                    The open badges spec uses linked data and requires that
-                                    the @id of the assertion is the iri of the assertion but
-                                    since wer using gists, we don't know what the url will be
-                                    for the gist so we'll need to create the gist and then update
-                                    it with the assertion.
-                                    **/
 
-                                    console.log("A "+badgeName+" for "+ earner);
+                            tweetUrl = "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str;
+                            //console.log("TWEET URL "+tweetUrl);
 
-                                    async.waterfall([
-                                        function(callback) {
-                                            earner = earner.replace('@','');
-                                            issuedDate = moment(Date.now()).format();
-                                            filenameDate = moment(Date.now()).format('YYYY-MM-DD-HH-mm-ss');
+                            callback(null,tweetUrl);
+
+                            }
+                        ],
+                        function(err, results) {
+
+                            if (err){
+                                console.log("ERR "+err);
+                                // right now err is no earners
+                            }
+
+                            var earners = results[0];
+                            var evidenceUrl = results[1];
+
+                            async.each(earners, function(earner, callback) {
+                                    
+                                /** 
+                                The open badges spec uses linked data and requires that
+                                the @id of the assertion is the iri of the assertion but
+                                since wer using gists, we don't know what the url will be
+                                for the gist so we'll need to create the gist and then update
+                                it with the assertion.
+                                **/
+
+                                async.waterfall([
+                                    function(callback) {
+                                        console.log("A "+badgeName+" for "+ earner);
+
+                                        earner = earner.replace('@','');
+                                        issuedDate = moment(Date.now()).format();
+                                        filenameDate = moment(Date.now()).format('YYYY-MM-DD-HH-mm-ss');
                                             
-                                            var filename = badgeHashtagId+"-"+earner+"-"+filenameDate+"-assertion.json";
+                                        var filename = badgeHashtagId+"-"+earner+"-"+filenameDate+"-assertion.json";
 
-                                            //create
-                                            gistOptions = { //replace hardcoded badge name in description
-                                                "description":"A You Rock! Open Badge Assertion for "+ earner, 
-                                                "public":"true",
-                                                    "files": {
-                                                    [filename]: {
-                                                        "content": "Placeholder for assertion"
-                                                    }
-                                                }    
-                                            };
+                                        //create
+                                        gistOptions = { //replace hardcoded badge name in description
+                                            "description":"A You Rock! Open Badge Assertion for "+ earner, 
+                                            "public":"true",
+                                                "files": {
+                                                [filename]: {
+                                                    "content": "Placeholder for assertion"
+                                                }
+                                            }    
+                                        };
 
-                                            gists.create(gistOptions, function(err,res){
-                                                console.log(JSON.stringify(res.files.filename));
-                                                callback(null, res, filename);
-                                            });
-                                        },
-                                        function(res, filename, callback) {
-                                            assertionUrl = "https://gist.githubusercontent.com/"+gistsUsername+"/"+res.id+"/raw";
-                                            console.log("ASSERTION URL "+JSON.stringify(assertionUrl));
-                                            console.log("FILENAME "+filename);
-                                            assertion = JSON.stringify({
-                                                "@context": "https://w3id.org/openbadges/v2",
-                                                    "type": "Assertion",
-                                                    "id": assertionUrl,
-                                                    "recipient": {
-                                                        "type": "url",
-                                                        "hashed": false,
-                                                        "identity": "https://twitter.com/"+earner,
-                                                    },
-                                                    "evidence": {
-                                                        "id:": tweetUrl,
-                                                        "narrative": "Issued on Twitter by Badgebot from [@"+tweet.user.screen_name+"](https://twitter.com/"+tweet.user.screen_name+")"
-                                                    },
-                                                    "issuedOn": issuedDate,
-                                                    "badge": "https://gist.githubusercontent.com/"+gistsUsername+"/dfcedd03d5b4897740a39460b9611313/raw",
-                                                    "verification": {
-                                                        "type": "hosted"
-                                                    }
-                                            });
-                                        
-                                            gists.edit({
-                                                "id": res.id,
+
+                                        gists.create(gistOptions).then(function(res){
+                                            callback(null, res.body, filename);
+                                        }).catch(function(err) {
+                                            //console.log("ERR CREATING "+err);
+                                            callback(err);
+                                        });
+                                         
+                                    },
+                                    function(gist, filename, callback) {
+                                        console.log("ADD ASSERTION TO GIST: ");
+                                        assertionUrl = "https://gist.githubusercontent.com/"+gistsUsername+"/"+gist.id+"/raw";
+                                        console.log("ASSERTION URL "+JSON.stringify(assertionUrl));
+                                        console.log("FILENAME "+filename);
+                                        assertion = JSON.stringify({
+                                            "@context": "https://w3id.org/openbadges/v2",
+                                                "type": "Assertion",
+                                                "id": assertionUrl,
+                                                "recipient": {
+                                                    "type": "url",
+                                                    "hashed": false,
+                                                    "identity": "https://twitter.com/"+earner,
+                                                },
+                                                "evidence": {
+                                                    "id:": tweetUrl,
+                                                    "narrative": "Issued on Twitter by Badgebot from [@"+tweet.user.screen_name+"](https://twitter.com/"+tweet.user.screen_name+")"
+                                                },
+                                                "issuedOn": issuedDate,
+                                                "badge": "https://gist.githubusercontent.com/"+gistsUsername+"/dfcedd03d5b4897740a39460b9611313/raw",
+                                                "verification": {
+                                                    "type": "hosted"
+                                                }
+                                        });
+
+                                        gists.edit(gist.id, {
                                                 "files": {
                                                     [filename]: {
                                                         "content": assertion
                                                     }
                                                 }
-                                            }, function(err, rest) {
-                                                if (err) console.log("err "+JSON.stringify(err));
-                                                console.log("REST "+JSON.stringify(rest));
-                                                callback(null,rest);
-                                            });
-                                        }
-                                    ],
+                                            }).then(function(res){
+                                                callback(null, res.body);
+                                        }).catch(function(err) {
+                                            console.log("ERR UPDATING "+err);
+                                            callback(err);
+                                        });
+                                    }
 
-                                        function(err, result) {
-                                    });
+                                ],
+                                function(err, result) {
+                                    console.log("DONE 2 - SEND TWEET");
+                                    claimUrl = "http://badgebot.io/earned/"+result.id;
+                                    callback();
                                 },
-
                                 function(err,result) {
-                                    callback(null, result);
+                                        console.log("DONE 3");
+                                        callback();
                                 });
-                            }
-                        ],
+                            },
                             function(err,result) {
-                                callback(null, result);
+                                console.log("Done with earners");
+                                    callback();
+                            });
                         });
 
-                        // make assertion
-                        // save assertion
-                        // tweet response
                     }
                     else {
                         console.log("Delete badge");
+                        callback();
                     }
-
-
-
-
-
-
 
                 }
                 else {
-                    console.log("No Badges - send a tweet");
+                    console.log("No Badge - send a tweet");
                    // var params = { status: '@'+tweet.user.screen_name+', did you wish to issue a badge? Learn more about the prototype here: http://badgebot.io', media_ids: [mediaIdStr] }
                    // T.post('statuses/update', params, function (err, data, response) {
                       //  //console.log(data)
                     //callback();
                     //});
+                    callback();
                 }            
             });
         },
