@@ -139,7 +139,9 @@ function getTweets(badges, callback) {
                     gists.edit(lastTweetIdGistId, {
                         "files": {
                             "last-twitter-id.txt": {
-                                "content": '1176248359457362000'//1142500227774967800' //tweets[0].id_str - replace with this when done testing
+                                //"content": '1176248359457362000'//1142500227774967800'
+                                //"content": '1181203519799529473'
+                                "content": tweets[0].id_str
                             }
                         }
                     })
@@ -198,10 +200,13 @@ function processTweets(badges, tweets, callback) {
                 if (! _.isEmpty(badge)) {
                     //console.log("BADGE TO PROCESS "+ JSON.stringify(badge));
 
+                    var tweetUser = tweet.user.screen_name.toLowerCase();
+                    console.log("Tweet User "+ tweetUser);
                     var badgeClassUrl = badge.badge.id;
                     var badgeClassImage = badge.badge.image;
                     var badgeName = badge.badge.name;
                     var badgeHashtagId = badge.badge.hashtag_id;
+                    var deleteHashTagId = badge.badge.delete_hashtag_id;
 
                     var streamBadgeImagefile = fs.createWriteStream("badgeImage.svg");
 
@@ -401,8 +406,83 @@ function processTweets(badges, tweets, callback) {
 
                     }
                     else {
-                        console.log("Delete badge");
-                        callback();
+                        console.log("Delete badge "+tweet.text);
+                        console.log("YES DELETE "+ badgeName + " " +tweet.user.screen_name);
+                        // get earner & assertion id from tweet
+                        // example: @badgebotio #deleteyourockbadge-[assertionId]
+
+                        /**
+                        Get earner & assertion id from tweet
+                        example: @badgebotio #deleteyourockbadge-[assertionId]
+
+                        Retrieve gist first and check that the earner username matches this
+                        tweet sender username.
+
+                        If gist not retrievable - tweet back error
+
+                        If match, attempt to delete gist
+
+                        if delete gist success reply success message
+
+                        if gist delete doesn't work - tweet back error.
+
+                        Error tweet: reply with the url of your badge page at badgebotio to badgebotio or DM.
+                        **/
+
+                        var hashtagData = tweet.text.match(/(-)\w+/g);
+
+                        if (hashtagData) {
+                            console.log("hashtagData "+JSON.stringify(hashtagData));
+                            console.log("hashtagData.length "+hashtagData.length);
+                            var assertionGistId = hashtagData[0].replace("-","");
+
+                           console.log("assertionGistId "+assertionGistId);
+
+                            rp({uri:'https://gist.githubusercontent.com/'+gistsUsername+'/'+assertionGistId+'/raw', simple:false})
+                                .then(function(body) {
+                                   // console.log("BODY "+ body);
+                                    assertionGist = JSON.parse(body);
+                                    //console.log("RECIPIENT "+assertionGist.recipient.identity);
+
+                                    var earner = assertionGist.recipient.identity.substring(assertionGist.recipient.identity.lastIndexOf('/') + 1);
+                                    console.log("EARNER "+ earner);
+                                    
+
+                                    if (earner == tweetUser) {
+                                        console.log("This is the earner requesting deletion");
+                                        gists.delete(assertionGistId).then(function(res){
+                                            console.log("BADGE Assertion "+assertionGist.id+" has been deleted.")
+                                            var params = { status: '@'+tweetUser+', your '+badgeName+ ' issued on '+assertionGist.issuedOn+' has been deleted.'}
+                                            twit.post('statuses/update', params, function (err, data, response) {
+                                                // console.log(data)
+                                                callback();
+                                            });
+                                        }).catch(function(err) {
+                                            console.log("ERR DELETING ASSERTION "+err);
+                                            callback(err);
+                                        });
+                                    }
+                                    else {
+                                        console.log("This username cannot delete this badge");
+                                        var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM @badgebotio with more information.' }
+                                            twit.post('statuses/update', params, function (err, data, response) {
+                                            // console.log(data)
+                                            callback();
+                                        });
+                                    }
+                                })
+                                .catch(function (err) {
+                                    console.log("RETRIEVING GIST TO DELETE ERR "+ err);
+                                    var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM @badgebotio with more information.' }
+                                    twit.post('statuses/update', params, function (err, data, response) {
+                                    // console.log(data)
+                                        callback();
+                                    });
+                                });  
+
+                        
+                            
+                        }
                     }
 
                 }
@@ -427,13 +507,14 @@ function getBadgesFromTweet(tweet, badges, callback) {
     async.waterfall([
         function(callback) {
             hashtagsFound = findHashtags(tweet.text);
-            console.log("HASHTAGS FOUND "+hashtagsFound);
 
-            if (hashtagsFound) {
+            if (hashtagsFound.length) {
+                console.log("HASHTAGS FOUND "+hashtagsFound);
                 callback(null,hashtagsFound);
             }
             else {
                 // no hashtags - nothing to do
+                console.log("NO HASHTAGS FOUND");
                 callback('no hashtags');
             }
         },
@@ -464,7 +545,7 @@ function getBadgesFromTweet(tweet, badges, callback) {
 
                     if (foundBadge) {
                         //get assertion gist id from tweet and send it back
-                        badge.push({"badge" : foundBadge, "command" : 'delete'});
+                        badge = {"badge" : foundBadge, "command" : 'delete'};
                         callback(badge);
                         break;
                     }
@@ -478,6 +559,7 @@ function getBadgesFromTweet(tweet, badges, callback) {
 
     ], function (err) {
         //console.log("FOUND BADGE OBJ RESULT "+JSON.stringify(badge));
+       // console.log(" TWEET ERR "+err);
         callback(badge); //badge obj
     });           
 }
