@@ -464,7 +464,7 @@ function processTweets(badges, tweets, callback) {
                                     }
                                     else {
                                         console.log("This username cannot delete this badge");
-                                        var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM me with more information.' }
+                                        var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge earned url or DM me with more information.' }
                                             twit.post('statuses/update', params, function (err, data, response) {
                                             // console.log(data)
                                             callback();
@@ -473,7 +473,7 @@ function processTweets(badges, tweets, callback) {
                                 })
                                 .catch(function (err) {
                                     console.log("RETRIEVING GIST TO DELETE ERR "+ err);
-                                    var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM me with more information.' }
+                                    var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge earned url or DM me with more information.' }
                                     twit.post('statuses/update', params, function (err, data, response) {
                                     // console.log(data)
                                         callback();
