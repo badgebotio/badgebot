@@ -339,8 +339,8 @@ function processTweets(badges, tweets, callback) {
                                                     "identity": "https://twitter.com/"+earner,
                                                 },
                                                 "evidence": {
-                                                    "id:": tweetUrl,
-                                                    "narrative": "Issued on Twitter by Badgebot from [@"+tweet.user.screen_name+"](https://twitter.com/"+tweet.user.screen_name+")"
+                                                    "id": tweetUrl,
+                                                    "narrative": "Issued on Twitter by Badgebot from <a href=\"https://twitter.com/"+tweet.user.screen_name+"\">@"+tweet.user.screen_name+"</a>"
                                                 },
                                                 "issuedOn": issuedDate,
                                                 "badge": "https://gist.githubusercontent.com/"+gistsUsername+"/dfcedd03d5b4897740a39460b9611313/raw",
@@ -464,7 +464,7 @@ function processTweets(badges, tweets, callback) {
                                     }
                                     else {
                                         console.log("This username cannot delete this badge");
-                                        var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM @badgebotio with more information.' }
+                                        var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM me with more information.' }
                                             twit.post('statuses/update', params, function (err, data, response) {
                                             // console.log(data)
                                             callback();
@@ -473,7 +473,7 @@ function processTweets(badges, tweets, callback) {
                                 })
                                 .catch(function (err) {
                                     console.log("RETRIEVING GIST TO DELETE ERR "+ err);
-                                    var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM @badgebotio with more information.' }
+                                    var params = { status: '@'+tweetUser+', it appears you were trying to delete a badge. Please reply with the badge url or DM me with more information.' }
                                     twit.post('statuses/update', params, function (err, data, response) {
                                     // console.log(data)
                                         callback();
@@ -537,6 +537,18 @@ function getBadgesFromTweet(tweet, badges, callback) {
                     break;
                 }
                 else {
+                    /**
+                    Future issue: each badge has its own delete_hash_tag id. 
+                    We don't really need this since the delete tweet includes 
+                    the assertion id. 
+
+                    It is a nicety that the bagde gets found though and we can use that in communication.
+
+                    However, we can just get that badge info from the assertion.
+
+                    This requires some re-coding so will revisit. 
+
+                    **/
                     console.log(hashtag + ' may be a delete_hashtag_id');
 
                     foundBadge = _.find(badges, function (obj) { 
