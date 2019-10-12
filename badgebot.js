@@ -402,12 +402,18 @@ function processTweets(badges, tweets, callback) {
                                     });
                                 },
                                 function(err,result) {
-                                    if (err) console.log("ERROR "+err);
+                                    if (err) {
+                                        console.log("ERROR "+err);
+                                        callback(err);
+                                    }
                                     callback();
                                 });
                             },
                             function(err,result) {
-                                if (err) console.log("ERROR "+err);
+                                if (err) {
+                                    console.log("ERROR "+err);
+                                    callback(err);
+                                }
                                 console.log("Done with earners");
                                 callback();
                             });
