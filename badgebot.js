@@ -372,9 +372,9 @@ function processTweets(badges, tweets, callback) {
 
                                 ],
                                 function(err, result) {
-                                    console.log("SEND TWEET");
+                                   // console.log("SEND TWEET "+earner);
                                     claimUrl = "http://badgebot.io/earned/"+result.id;
-                                    msg = "Congratulations @"+earner+"! @"+tweet.user.screen_name+" issued you a #"+badgeHashtagId+". You can view this badge here: "+claimUrl;
+                                    var msg = "Congratulations @"+earner+"! @"+tweet.user.screen_name+" issued you a #"+badgeHashtagId+". You can view this badge here: "+claimUrl;
                                     
                                     /**
                                     Uploads the badge image and then sends it as part of the status update.
@@ -385,35 +385,34 @@ function processTweets(badges, tweets, callback) {
                                     twit.post('media/upload', { media_data: badgeImage}, function (err, data, response) {
 
                                         var mediaIdStr = data.media_id_string
-                                        var meta_params = { media_id: mediaIdStr, alt_text: { text: [badgeName] } }
+                                        var meta_params = { media_id: mediaIdStr, alt_text: { text: badgeName } }
 
                                         twit.post('media/metadata/create', meta_params, function (err, data, response) {
-
-                                            if (err) callback(err);
-                                            var params = { status: msg, media_ids: [mediaIdStr] }
+                                            console.log("TWITTER METADATA RESPONSE "+JSON.stringify(response));
+                                            if (!err) {
+                                                // now we can reference the media and post a tweet (media will attach to the tweet)
+                                                var params = { status: msg, media_ids: [mediaIdStr] }
  
-                                            twit.post('statuses/update', params, function (err, data, response) {
-                                                if (err) callback(err);
-                                                //console.log(data)
-                                                callback();
-                                            });
-                    
+                                                twit.post('statuses/update', params, function (err, data, response) {
+                                                    console.log("TWITTER RESPONSE "+JSON.stringify(response));
+                                                    callback();
+                                                });
+                                            }
+                                            else {
+                                                callback("TWITTER ERR "+err);
+                                            }
                                         });
                                     });
                                 },
                                 function(err,result) {
-                                    if (err) {
-                                        console.log("ERROR "+err);
-                                        callback(err);
-                                    }
-                                    callback();
+                                    if (err) console.log("ASYNC WATERFALL ERR "+err);
+                                        callback();
                                 });
                             },
                             function(err,result) {
-                                if (err) {
-                                    console.log("ERROR "+err);
-                                }
+                                if (err) console.log("ASYNC EARNERS ERR "+err);
                                 console.log("Done with earners");
+                                    callback();
                             });
                         });
 
