@@ -112,13 +112,16 @@ function getTweets(badges, callback) {
 
     var lastTweetIdGistId = process.env.LAST_TWEET_ID_GIST_ID;
 
+    console.log("lastTweetIdGistId "+lastTweetIdGistId);
+
     rp('https://gist.githubusercontent.com/'+gistsUsername+'/'+lastTweetIdGistId+'/raw')
         .then(function(body) {
-            var lastTweetId  = JSON.parse(body);
-             console.log("lastTweetId "+JSON.stringify(lastTweetId));
+            var lastTweetId  = body;
 
-            var options = {count: 200}; //Twitter has a max of 200 per request.
-            if (lastTweetId) { options.since_id = lastTweetId; }
+           // console.log("lastTweetId "+JSON.stringify(lastTweetId));
+
+            var options = {count: 200, since_id: lastTweetId}; //Twitter has a max of 200 per request.
+            //if (lastTweetId) { options.since_id = lastTweetId; }
 
             //console.log("options "+ JSON.stringify(options));
             var lastTweetId_str = "";
@@ -126,14 +129,18 @@ function getTweets(badges, callback) {
             // Retrieve 200 tweets since last tweet id then save the last tweet id of this batch
 
             twit.get('/statuses/mentions_timeline', options, function(err, tweets, response) {
-           // console.log("TWEETS from Timeline "+JSON.stringify(tweets));
             
                 if (tweets.length > 0) {
                     /** 
                         First result is the most recent tweet. Update this id so 
                         we can retrieve only most recent next batch.
                     **/
-                    console.log("We have Tweets");
+
+                    console.log("TWEETS from Timeline "+JSON.stringify(tweets[0]));
+
+                    lastTweetId_str = tweets[0].id_str;
+
+                    console.log("LAST TWEET ID: "+tweets[0].id_str);
 
 
                     gists.edit(lastTweetIdGistId, {
@@ -141,7 +148,7 @@ function getTweets(badges, callback) {
                             "last-twitter-id.txt": {
                                 //"content": '1176248359457362000'//1142500227774967800'
                                 //"content": '1181203519799529473'
-                                "content": tweets[0].id_str
+                                "content": lastTweetId_str
                             }
                         }
                     })
@@ -177,7 +184,7 @@ function getTweets(badges, callback) {
 
 function processTweets(badges, tweets, callback) { 
 
-    console.log('badges '+ badges);
+   // console.log('badges '+ badges);
   //  console.log("LATEST TWEETS "+JSON.stringify(tweets));
 
     if (tweets.length == 0){
@@ -185,8 +192,8 @@ function processTweets(badges, tweets, callback) {
     }
     else {
         async.each(tweets, function(tweet, callback) {
-            console.log("Tweet ID STR "+tweet.id_str);
-            console.log("Tweet ID "+tweet.id);
+            console.log("Tweet ID STR "+tweets[0].id_str);
+            console.log("Tweet ID "+tweet.id_str);
             console.log("Tweet Text "+tweet.text);
            // console.log("TWEET URL "+ "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str);
             
