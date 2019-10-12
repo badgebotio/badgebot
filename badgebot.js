@@ -112,7 +112,7 @@ function getTweets(badges, callback) {
 
     var lastTweetIdGistId = process.env.LAST_TWEET_ID_GIST_ID;
 
-    console.log("lastTweetIdGistId "+lastTweetIdGistId);
+    //console.log("lastTweetIdGistId "+lastTweetIdGistId);
 
     rp('https://gist.githubusercontent.com/'+gistsUsername+'/'+lastTweetIdGistId+'/raw')
         .then(function(body) {
@@ -412,10 +412,8 @@ function processTweets(badges, tweets, callback) {
                             function(err,result) {
                                 if (err) {
                                     console.log("ERROR "+err);
-                                    callback(err);
                                 }
                                 console.log("Done with earners");
-                                callback();
                             });
                         });
 
