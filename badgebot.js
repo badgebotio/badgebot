@@ -378,8 +378,7 @@ function processTweets(badges, tweets, callback) {
                                     twit.post('media/upload', { media_data: badgeImage}, function (err, data, response) {
 
                                         var mediaIdStr = data.media_id_string
-                                        var altText = badgeName+" Image"
-                                        var meta_params = { media_id: mediaIdStr, alt_text: { text: altText } }
+                                        var meta_params = { media_id: mediaIdStr, alt_text: { text: [badgeName] } }
 
                                         twit.post('media/metadata/create', meta_params, function (err, data, response) {
                                             if (!err) {
