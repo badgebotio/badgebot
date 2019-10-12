@@ -388,25 +388,28 @@ function processTweets(badges, tweets, callback) {
                                         var meta_params = { media_id: mediaIdStr, alt_text: { text: [badgeName] } }
 
                                         twit.post('media/metadata/create', meta_params, function (err, data, response) {
-                                            if (!err) {
-                                                // now we can reference the media and post a tweet (media will attach to the tweet)
-                                                var params = { status: msg, media_ids: [mediaIdStr] }
+
+                                            if (err) callback(err);
+                                            var params = { status: msg, media_ids: [mediaIdStr] }
  
-                                                twit.post('statuses/update', params, function (err, data, response) {
-                                                   // console.log(data)
-                                                    callback();
-                                                });
-                                            }
+                                            twit.post('statuses/update', params, function (err, data, response) {
+                                                if (err) callback(err);
+                                                //console.log(data)
+                                                callback();
+                                            });
+                    
                                         });
                                     });
                                 },
                                 function(err,result) {
-                                        callback();
+                                    if (err) console.log("ERROR "+err);
+                                    callback();
                                 });
                             },
                             function(err,result) {
+                                if (err) console.log("ERROR "+err);
                                 console.log("Done with earners");
-                                    callback();
+                                callback();
                             });
                         });
 
