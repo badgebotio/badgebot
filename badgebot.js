@@ -15,7 +15,7 @@ const rp = require('request-promise');
 const convertSvgToPng = require("./svg-to-png.js");
 
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({path: './.env'});
 
 const Sentry = require('@sentry/node');
 Sentry.init({ dsn: process.env.SENTRY_DSN });
