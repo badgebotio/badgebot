@@ -35,12 +35,8 @@ const twit = new Twit({
     access_token_secret:  process.env.TWITTER_ACCES_TOKEN_SECRET
 }); 
 
-const badgesFolder = './badges';
 
-//const badgesFolder = '../app/badges';
 var badges = [];
-//var bbGists = [];
-//var latestTweets = [];
 
 
 // STARTS HERE. Get gists, badges & tweets
@@ -52,20 +48,6 @@ async.waterfall([
   ], function (err, result) {
       //console.log("RESULT "+result);
   });
-
-/*function getBadges(bbGists, callback) {
-  var files = fs.readdirSync(path.join(__dirname,badgesFolder));
-  var notJunkFiles = files.filter(junk.not);
-  //console.log(files.filter(junk.not));
-  async.each(files.filter(junk.not), function(file, callback) {
-    var badge = require('./badges/'+file);
-    badges.push(badge);
-    callback(null);
-  }, function (err, result) {
-   //console.log('badges '+ JSON.stringify(badges));
-    callback(null,badges);
-  });
-}*/
 
 /** Load up badges from Gists **/
 function getBadges(callback) {
@@ -217,8 +199,7 @@ function processTweets(badges, tweets, callback) {
                     var badgeName = badge.badge.name;
                     var badgeHashtagId = badge.badge.hashtag_id;
                     var deleteHashTagId = badge.badge.delete_hashtag_id;
-
-                    var streamBadgeImagefile = fs.createWriteStream("badgeImage.svg");
+                    var badgeImageURL = process.env.S3_BUCKET_URL+process.env.S3_BADGE_IMAGES_FOLDER+"/"+badgeHashtagId+"-image.png";
 
                     console.log("BadgeClass Url: "+ badge.badge.id);
                     console.log("Badge Image Url: "+ badge.badge.image);
@@ -258,7 +239,30 @@ function processTweets(badges, tweets, callback) {
                                 callback(null,tweetUrl);
 
                             },
+
+                            function(callback) { //get and encode png badge image
+                                
+                                var imageRequest = require('request').defaults({ encoding: null });
+
+                                imageRequest.get(badgeImageURL, function (err, response, body) {
+
+                                    if (!err && response.statusCode == 200) {
+                                        data = new Buffer(body).toString('base64');
+                                        callback(null,data);
+                                    }
+                                    else {
+                                        callback(err);
+                                    }
+                                });
+                            }
+
+                            /**
+                            Using hosted PNGs for now instead of generating from SVG
+
                             function(callback) { //png of badge image svg
+
+                                var streamBadgeImagefile = fs.createWriteStream("badgeImage.svg");
+
                                 https.get(badge.badge.image,function(response) {
                                     response.setEncoding('utf8');
                                 
@@ -281,7 +285,7 @@ function processTweets(badges, tweets, callback) {
                                         });
                                     });
                                 });
-                            }
+                            }**/
                         ],
                         function(err, results) {
 
@@ -385,26 +389,34 @@ function processTweets(badges, tweets, callback) {
                                     https://developer.twitter.com/en/docs/tweets/optimize-with-cards/overview/player-card
                                     **/
 
-                                    twit.post('media/upload', { media_data: badgeImage}, function (err, data, response) {
+                                    twit.post('media/upload', { media_data: badgeImage }, function (err, data, response) {
+                                        //console.log("DATA "+JSON.stringify(data));
+                                        //console.log("RESPONSE "+JSON.stringify(response));
 
-                                        var mediaIdStr = data.media_id_string
-                                        var meta_params = { media_id: mediaIdStr, alt_text: { text: badgeName } }
+                                        if (!err) {
 
-                                        twit.post('media/metadata/create', meta_params, function (err, data, response) {
-                                            console.log("TWITTER METADATA RESPONSE "+JSON.stringify(response));
-                                            if (!err) {
-                                                // now we can reference the media and post a tweet (media will attach to the tweet)
-                                                var params = { status: msg, media_ids: [mediaIdStr] }
+                                            var mediaIdStr = data.media_id_string;
+                                            var meta_params = { media_id: mediaIdStr, alt_text: { text: badgeName } }
+
+                                            twit.post('media/metadata/create', meta_params, function (err, data, response) {
+                                              //  console.log("TWITTER METADATA RESPONSE "+JSON.stringify(response));
+                                                if (!err) {
+                                                    // now we can reference the media and post a tweet (media will attach to the tweet)
+                                                    var params = { status: msg, media_ids: [mediaIdStr] }
  
-                                                twit.post('statuses/update', params, function (err, data, response) {
-                                                    console.log("TWITTER RESPONSE "+JSON.stringify(response));
-                                                    callback();
-                                                });
-                                            }
-                                            else {
-                                                callback("TWITTER ERR "+err);
-                                            }
-                                        });
+                                                    twit.post('statuses/update', params, function (err, data, response) {
+                                                        //console.log("TWITTER RESPONSE "+JSON.stringify(response));
+                                                        callback();
+                                                    });
+                                                }
+                                                else {
+                                                    callback("TWITTER METADATA ERR "+err);
+                                                }
+                                            });
+                                        }
+                                        else {
+                                            callback("TWITTER MEDIA UPLOAD ERR "+err);
+                                        }
                                     });
                                 },
                                 function(err,result) {
