@@ -82,6 +82,8 @@ function getBadges(callback) {
         function(badgeList, callback) {          
 
             var badgeListArr  = badgeList.split(',');
+
+           // console.log("BADGES LIST "+JSON.stringify(badgeListArr));
             callback(null, badgeListArr);
         },
         function(badgeListArr, callback) {
@@ -89,9 +91,10 @@ function getBadges(callback) {
                 rp({uri:'https://gist.githubusercontent.com/'+gistsUsername+'/'+badgeGistId+'/raw', simple:false})
                 .then(function(body) {
                     var badge = JSON.parse(body);
+
                     badges.push(badge);
-                  //  console.log(badges);
-                    callback(badges);
+                    console.log("BADGE NAME "+badge.name);
+                    callback();
                 });
 
             }, function(badges){
@@ -350,7 +353,7 @@ function processTweets(badges, tweets, callback) {
                                                     "narrative": "Issued on Twitter by Badgebot from <a href=\"https://twitter.com/"+tweet.user.screen_name+"\">@"+tweet.user.screen_name+"</a>"
                                                 },
                                                 "issuedOn": issuedDate,
-                                                "badge": "https://gist.githubusercontent.com/"+gistsUsername+"/dfcedd03d5b4897740a39460b9611313/raw",
+                                                "badge": badge.badge.id,
                                                 "verification": {
                                                     "type": "hosted"
                                                 }
