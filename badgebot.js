@@ -200,6 +200,9 @@ function processTweets(badges, tweets, callback) {
                     var badgeHashtagId = badge.badge.hashtag_id;
                     var deleteHashTagId = badge.badge.delete_hashtag_id;
                     var badgeImageURL = process.env.S3_BUCKET_URL+process.env.S3_BADGE_IMAGES_FOLDER+"/"+badgeHashtagId+"-image.png";
+                    var logic_function = badge.badge.criteria.details[0].logic_function; // assuming only one right now
+
+                    console.log("logic_function: "+ logic_function);
 
                     console.log("BadgeClass Url: "+ badge.badge.id);
                     console.log("Badge Image Url: "+ badge.badge.image);
@@ -216,12 +219,18 @@ function processTweets(badges, tweets, callback) {
 
                         async.series([
                             function(callback) {
-                            // get earners & filter out @badgebotio
-                                o_earners = userMentions(tweet.text);
-                                // console.log("O EARNERS "+o_earners);
-                                earners = _.reject(userMentions(tweet.text), function(earner){
-                                    return (earner.toLowerCase() == "@badgebotio"); 
-                                });
+
+                                if (logic_function == "tweet_text_self") { // future issue: make this logic more portable
+                                    earners = [tweetUser];
+                                }
+                                else {
+                                    // get earners & filter out @badgebotio
+                                    o_earners = userMentions(tweet.text);
+                                    // console.log("O EARNERS "+o_earners);
+                                    earners = _.reject(userMentions(tweet.text), function(earner){
+                                        return (earner.toLowerCase() == "@badgebotio"); 
+                                    });
+                                }
                                 // earners = ['@someone', '@someonetoo'];
                                 if (earners.length) {
                                     console.log("EARNERS "+earners);                              
@@ -381,7 +390,13 @@ function processTweets(badges, tweets, callback) {
                                 function(err, result) {
                                    // console.log("SEND TWEET "+earner);
                                     claimUrl = "http://badgebot.io/earned/"+result.id;
-                                    var msg = "Congratulations @"+earner+"! @"+tweet.user.screen_name+" issued you a #"+badgeHashtagId+". You can view this badge here: "+claimUrl;
+
+                                    if (logic_function == "tweet_text_self") {
+                                        var msg = "Hi @"+earner+"! You can get your #"+badgeHashtagId+" badge here: "+claimUrl;
+                                    }
+                                    else {
+                                        var msg = "Congratulations @"+earner+"! @"+tweet.user.screen_name+" issued you a #"+badgeHashtagId+". You can get this badge here: "+claimUrl;
+                                    }
                                     
                                     /**
                                     Uploads the badge image and then sends it as part of the status update.
@@ -405,8 +420,13 @@ function processTweets(badges, tweets, callback) {
                                                     var params = { status: msg, media_ids: [mediaIdStr] }
  
                                                     twit.post('statuses/update', params, function (err, data, response) {
-                                                        //console.log("TWITTER RESPONSE "+JSON.stringify(response));
-                                                        callback();
+                                                       // console.log("TWITTER RESPONSE "+JSON.stringify(response));
+                                                        if (!err) {
+                                                            callback();
+                                                        }
+                                                        else {
+                                                            callback("TWITTER STATUS UPDATE ERR "+err);
+                                                        }
                                                     });
                                                 }
                                                 else {
