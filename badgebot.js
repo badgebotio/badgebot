@@ -233,8 +233,10 @@ function processTweets(badges, tweets, callback) {
                                 }
                                 // earners = ['@someone', '@someonetoo'];
                                 if (earners.length) {
-                                    console.log("EARNERS "+earners);                              
-                                    callback(null, earners);
+                                    //To do: remove dupes
+                                    console.log("EARNERS "+earners);  
+
+                                    callback(null, _.uniq(earners));
                                 }
                                 else {
                                     callback("no earner");
@@ -306,6 +308,8 @@ function processTweets(badges, tweets, callback) {
                             var earners = results[0];
                             var evidenceUrl = results[1];
                             var badgeImage = results[2];
+
+                            console.log("EARNERS "+earners);  
 
                             async.each(earners, function(earner, callback) {
                                     
