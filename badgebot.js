@@ -353,7 +353,6 @@ function processTweets(badges, tweets, callback) {
 
                                 async.waterfall([
                                     function(callback) {
-                                        console.log("A "+badgeName+" for "+ earner);
 
                                         earner = earner.replace('@','').toLowerCase();
                                         console.log("A "+badgeName+" for "+ earner);
@@ -603,7 +602,10 @@ function getBadgesFromTweet(tweet, badges, callback) {
         },
         function(hashtagsFound,callback) {
 
-            for (let hashtag of hashtagsFound) {
+            // stops when it finds first badge
+            async.each(hashtagsFound, function(hashtag, callback) {
+
+                console.log("HASHTAG: "+hashtag);
                 
                 foundBadge = _.find(badges, function (obj) { 
                     return obj.hashtag_id == hashtag; 
@@ -616,8 +618,8 @@ function getBadgesFromTweet(tweet, badges, callback) {
                     Stop here at first find.
                     But this is where other hashtag functionality can be considered
                     **/
+                    console.log("BADGE FOUND");
                     callback(badge);
-                    break;
                 }
                 else {
                     /**
@@ -625,7 +627,7 @@ function getBadgesFromTweet(tweet, badges, callback) {
                     We don't really need this since the delete tweet includes 
                     the assertion id. 
 
-                    It is a nicety that the bagde gets found though and we can use that in communication.
+                    It is a nicety that the badge gets found though and we can use that in communication.
 
                     However, we can just get that badge info from the assertion.
 
@@ -642,19 +644,23 @@ function getBadgesFromTweet(tweet, badges, callback) {
                         //get assertion gist id from tweet and send it back
                         badge = {"badge" : foundBadge, "command" : 'delete'};
                         callback(badge);
-                        break;
                     }
                     else {
                         console.log('Ignoring ' + hashtag + '. A badge could not be found.');
-                        callback(); 
+                        //callback('Ignoring ' + hashtag + '. A badge could not be found.'); 
                     }
                 }
-            }
+            }, function(badge) {
+                //if (err) callback(err);
+                //console.log("FOUND BADGE OBJ RESULT 1 "+JSON.stringify(badge));
+                callback(badge);
+            });
         }
 
-    ], function (err) {
-        //console.log("FOUND BADGE OBJ RESULT "+JSON.stringify(badge));
+    ], function (badge) {
+        //console.log("FOUND BADGE OBJ RESULT 2 "+JSON.stringify(badge));
        // console.log(" TWEET ERR "+err);
+       //if (err) callback(err);
         callback(badge); //badge obj
     });           
 }
