@@ -33,6 +33,8 @@ const twit = new Twit({
     consumer_secret:      process.env.TWITTER_CONSUMER_SECRET,
     access_token:         process.env.TWITTER_ACCESS_TOKEN,
     access_token_secret:  process.env.TWITTER_ACCES_TOKEN_SECRET
+    // Future issue: tweet_mode: "extended" - otheriwse tweet text is truncated. 
+    // May not be available to sandbox twitter devs
 }); 
 
 
@@ -588,6 +590,8 @@ function getBadgesFromTweet(tweet, badges, callback) {
     var badge = {};
     async.waterfall([
         function(callback) {
+
+            //console.log("TWEET "+JSON.stringify(tweet));
             hashtagsFound = findHashtags(tweet.text);
 
             if (hashtagsFound.length) {
