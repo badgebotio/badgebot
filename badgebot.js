@@ -44,6 +44,7 @@ var badges = [];
 async.waterfall([
   getBadges,
   getTweets,
+  cullTweets,
   processTweets
   ], function (err, result) {
       //console.log("RESULT "+result);
@@ -103,9 +104,13 @@ function getTweets(badges, callback) {
         .then(function(body) {
             var lastTweetId  = body;
 
-           // console.log("lastTweetId "+JSON.stringify(lastTweetId));
+            console.log("lastTweetId "+JSON.stringify(lastTweetId));
 
-            var options = {count: 200, since_id: lastTweetId}; //Twitter has a max of 200 per request.
+            var options = {count: 200, 
+            since_id: lastTweetId
+            //exclude_replies: true,
+            //include_rts: false
+            }; //Twitter has a max of 200 per request.
             //if (lastTweetId) { options.since_id = lastTweetId; }
 
             //console.log("options "+ JSON.stringify(options));
@@ -121,7 +126,7 @@ function getTweets(badges, callback) {
                         we can retrieve only most recent next batch.
                     **/
 
-                    console.log("TWEETS from Timeline "+JSON.stringify(tweets[0]));
+                   // console.log("TWEETS from Timeline "+JSON.stringify(tweets[0]));
 
                     lastTweetId_str = tweets[0].id_str;
 
@@ -132,7 +137,7 @@ function getTweets(badges, callback) {
                         "files": {
                             "last-twitter-id.txt": {
                                 //"content": '1176248359457362000'//1142500227774967800'
-                                //"content": '1181203519799529473'
+                                //"content": '1184251545010999301'
                                 "content": lastTweetId_str
                             }
                         }
@@ -145,6 +150,7 @@ function getTweets(badges, callback) {
                         console.log("ERR UPDATING LAST TWEET "+err);
                         callback(err);
                     });
+
                 }
                 else {
 
@@ -160,6 +166,28 @@ function getTweets(badges, callback) {
     );
 }
 
+function cullTweets(badges, tweets, callback) { 
+   // console.log("LATEST TWEETS "+JSON.stringify(tweets));
+    var culledTweets = [];
+
+    i= 0;
+    async.each(tweets, function(tweet, callback) {
+        //console.log("tweet.in_reply_to_status_id "+ tweet.in_reply_to_status_id);
+        if (tweet.in_reply_to_status_id === null ) {
+            console.log("tweet.id_str: "+ tweet.id_str);
+            console.log("tweet.in_reply_to_status_id: "+ tweet.in_reply_to_status_id);
+            culledTweets.push(tweet);
+        }
+        i++;
+        if (i == tweets.length) {
+            //console.log("CULLED TWEETS "+JSON.stringify(tweets));
+            callback(culledTweets);
+        }
+    }, function(tweets) {
+        callback(null, badges, culledTweets);
+    });
+}
+
 /** Processing each tweet
 1. Get hashtags; If no hashtags...
 2. Get Badge; If no badge...
@@ -170,7 +198,7 @@ function getTweets(badges, callback) {
 function processTweets(badges, tweets, callback) { 
 
    // console.log('badges '+ badges);
-  //  console.log("LATEST TWEETS "+JSON.stringify(tweets));
+    //console.log("LATEST TWEETS "+JSON.stringify(tweets));
 
     if (tweets.length == 0){
         callback(null,"done"); // nothing to do until there are tweets
@@ -180,7 +208,7 @@ function processTweets(badges, tweets, callback) {
             console.log("Tweet ID STR "+tweets[0].id_str);
             console.log("Tweet ID "+tweet.id_str);
             console.log("Tweet Text "+tweet.text);
-           // console.log("TWEET URL "+ "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str);
+            console.log("TWEET URL "+ "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str);
             
             // Evidence - tweeturl for now
             // Future issue - save base64 encoded image https://gist.github.com/madhums/e749dca107e26d72b64d
@@ -421,6 +449,7 @@ function processTweets(badges, tweets, callback) {
                                               //  console.log("TWITTER METADATA RESPONSE "+JSON.stringify(response));
                                                 if (!err) {
                                                     // now we can reference the media and post a tweet (media will attach to the tweet)
+                                                    console.log("BadgeBot Sucecss Response Tweet: "+msg);
                                                     var params = { status: msg, media_ids: [mediaIdStr] }
  
                                                     twit.post('statuses/update', params, function (err, data, response) {
