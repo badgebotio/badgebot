@@ -119,6 +119,8 @@ function getTweets(badges, callback) {
             // Retrieve 200 tweets since last tweet id then save the last tweet id of this batch
 
             twit.get('/statuses/mentions_timeline', options, function(err, tweets, response) {
+
+                if (err) callback(err);
             
                 if (tweets.length > 0) {
                     /** 
@@ -262,7 +264,7 @@ function processTweets(badges, tweets, callback) {
                                 // earners = ['@someone', '@someonetoo'];
                                 if (earners.length) {
                                     //To do: remove dupes
-                                    console.log("EARNERS "+earners);  
+                                   // console.log("EARNERS "+earners);  
 
                                     callback(null, _.uniq(earners));
                                 }
@@ -353,7 +355,8 @@ function processTweets(badges, tweets, callback) {
                                     function(callback) {
                                         console.log("A "+badgeName+" for "+ earner);
 
-                                        earner = earner.replace('@','');
+                                        earner = earner.replace('@','').toLowerCase();
+                                        console.log("A "+badgeName+" for "+ earner);
                                         issuedDate = moment(Date.now()).format();
                                         filenameDate = moment(Date.now()).format('YYYY-MM-DD-HH-mm-ss');
                                             
