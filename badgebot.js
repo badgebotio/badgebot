@@ -33,8 +33,6 @@ const twit = new Twit({
     consumer_secret:      process.env.TWITTER_CONSUMER_SECRET,
     access_token:         process.env.TWITTER_ACCESS_TOKEN,
     access_token_secret:  process.env.TWITTER_ACCES_TOKEN_SECRET
-    // Future issue: tweet_mode: "extended" - otheriwse tweet text is truncated. 
-    // May not be available to sandbox twitter devs
 }); 
 
 
@@ -213,9 +211,6 @@ function processTweets(badges, tweets, callback) {
             console.log("Tweet ID "+tweet.id_str);
             console.log("Tweet Text "+tweet.text);
             console.log("TWEET URL "+ "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str);
-            
-            // Evidence - tweeturl for now
-            // Future issue - save base64 encoded image https://gist.github.com/madhums/e749dca107e26d72b64d
                         
             var tweetUrl = "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str;
 
@@ -242,17 +237,10 @@ function processTweets(badges, tweets, callback) {
                     if (badge.command == "issue") {
                         console.log("Issue badge: "+badgeName);
 
-                        /** 
-                        Get earners
-                        for now earner(s) is assumed to be mentioned username,
-                        Future Issue:  do badge to tweeter 
-                        (tweeter could include their own @username and it would work)
-                        **/
-
                         async.series([
                             function(callback) {
 
-                                if (logic_function == "tweet_text_self") { // future issue: make this logic more portable
+                                if (logic_function == "tweet_text_self") { 
                                     earners = [tweetUser];
                                 }
                                 else {
@@ -436,8 +424,6 @@ function processTweets(badges, tweets, callback) {
                                     
                                     /**
                                     Uploads the badge image and then sends it as part of the status update.
-                                    Future Issue: create a player-card?
-                                    https://developer.twitter.com/en/docs/tweets/optimize-with-cards/overview/player-card
                                     **/
 
                                     twit.post('media/upload', { media_data: badgeImage }, function (err, data, response) {
@@ -626,18 +612,7 @@ function getBadgesFromTweet(tweet, badges, callback) {
                     callback(badge);
                 }
                 else {
-                    /**
-                    Future issue: each badge has its own delete_hash_tag id. 
-                    We don't really need this since the delete tweet includes 
-                    the assertion id. 
 
-                    It is a nicety that the badge gets found though and we can use that in communication.
-
-                    However, we can just get that badge info from the assertion.
-
-                    This requires some re-coding so will revisit. 
-
-                    **/
                     console.log(hashtag + ' may be a delete_hashtag_id');
 
                     foundBadge = _.find(badges, function (obj) { 
