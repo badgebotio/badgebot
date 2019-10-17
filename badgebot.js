@@ -285,7 +285,15 @@ function processTweets(badges, tweets, callback) {
                                         callback(err);
                                     }
                                 });
-                            }
+                            }/*,
+
+                            function(callback) { //see if it is a tweet_text_self badge and if postal code
+
+                                if (logic_function == "tweet_text_self") { 
+
+                                    // look for content like [14000FR] or [14000 FR] in tweet tweet.text
+                                }
+                            }*/
 
                             /**
                             Using hosted PNGs for now instead of generating from SVG
@@ -353,7 +361,7 @@ function processTweets(badges, tweets, callback) {
 
                                         //create
                                         gistOptions = { //replace hardcoded badge name in description
-                                            "description":"A You Rock! Open Badge Assertion for "+ earner, 
+                                            "description":"A " +You Rock! Open Badge+ " Assertion for "+ earner, 
                                             "public":"true",
                                                 "files": {
                                                 [filename]: {
