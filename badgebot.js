@@ -361,7 +361,7 @@ function processTweets(badges, tweets, callback) {
 
                                         //create
                                         gistOptions = { //replace hardcoded badge name in description
-                                            "description":"A " +You Rock! Open Badge+ " Assertion for "+ earner, 
+                                            "description":"A " +badgeName+ " Assertion for "+ earner, 
                                             "public":"true",
                                                 "files": {
                                                 [filename]: {
