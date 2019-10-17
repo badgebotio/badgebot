@@ -266,7 +266,7 @@ function processTweets(badges, tweets, callback) {
                                 // earners = ['@someone', '@someonetoo'];
                                 if (earners.length) {
                                     //To do: remove dupes
-                                   // console.log("EARNERS "+earners);  
+                                    console.log("EARNERS "+earners);  
 
                                     callback(null, _.uniq(earners));
                                 }
@@ -341,7 +341,7 @@ function processTweets(badges, tweets, callback) {
                             var evidenceUrl = results[1];
                             var badgeImage = results[2];
 
-                            console.log("EARNERS "+earners);  
+                            console.log("PROCESS EARNERS "+earners);  
 
                             async.each(earners, function(earner, callback) {
                                     
@@ -428,10 +428,10 @@ function processTweets(badges, tweets, callback) {
                                     claimUrl = "http://badgebot.io/earned/"+result.id;
 
                                     if (logic_function == "tweet_text_self") {
-                                        var msg = "Hi @"+earner+"! You can get your #"+badgeHashtagId+" badge here: "+claimUrl;
+                                        var msg = "@"+earner+"! You can get your #"+badgeHashtagId+" badge here: "+claimUrl;
                                     }
                                     else {
-                                        var msg = "Congratulations @"+earner+"! @"+tweet.user.screen_name+" issued you a #"+badgeHashtagId+". You can get this badge here: "+claimUrl;
+                                        var msg = "@"+earner+"! @"+tweet.user.screen_name+" issued you a #"+badgeHashtagId+". You can get this badge here: "+claimUrl;
                                     }
                                     
                                     /**
