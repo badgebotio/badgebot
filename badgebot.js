@@ -269,7 +269,7 @@ function processTweets(badges, tweets, callback) {
                             },
                             function(callback) { //evidence_url
 
-                                tweetUrl = "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str;
+                               tweetUrl = "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str;
                                 //console.log("TWEET URL "+tweetUrl);
 
                                 callback(null,tweetUrl);
@@ -345,6 +345,9 @@ function processTweets(badges, tweets, callback) {
                                     else {
                                         callback(null,null);
                                     }
+                                }
+                                else {
+                                    callback(null,null);
                                 }
                             }/**,
                             
