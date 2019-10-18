@@ -4,12 +4,9 @@ const https = require('https');
 const moment  = require('moment');
 const findHashtags = require('find-hashtags');
 const userMentions = require('get-user-mentions');
-const { convertFile } = require('convert-svg-to-png');
 const _ = require('underscore');
 const async = require("async");
 const fs = require('fs');
-//const junk = require('junk');
-//const path = require('path');
 const request = require("request");
 const rp = require('request-promise');
 const convertSvgToPng = require("./svg-to-png.js");
@@ -20,6 +17,10 @@ dotenv.config({path: __dirname + '/./.env'});
 const Sentry = require('@sentry/node');
 Sentry.init({ dsn: process.env.SENTRY_DSN });
 
+const googleMapsClient = require('@google/maps').createClient({
+  key: process.env.GOOGLE_MAPS_CLIENT,
+  Promise: Promise
+});
 
 var gistsUsername = process.env.GITHUB_USERNAME;
 
@@ -90,8 +91,6 @@ function getBadges(callback) {
     });
 }
 
-
-//function getTweets(bbGists, badges, callback) {
 function getTweets(badges, callback) {
 
    //console.log("getTweets BADGES ARR "+ JSON.stringify(badges));
@@ -138,8 +137,7 @@ function getTweets(badges, callback) {
                     gists.edit(lastTweetIdGistId, {
                         "files": {
                             "last-twitter-id.txt": {
-                                //"content": '1176248359457362000'//1142500227774967800'
-                                //"content": '1184251545010999301'
+                               // "content": '1185221759076884483'
                                 "content": lastTweetId_str
                             }
                         }
@@ -167,12 +165,18 @@ function getTweets(badges, callback) {
         }
     );
 }
-
+/** This function was added because the bot was responding to retweets and replies.
+Twitter provides flags to exclude replies and retweets but when turned on there were no tweets
+so we addded this to manually cull but it is possible we are missing tweets because of it.
+Also, it may be that status updates don't show up in mentions because it is inot in reply to
+a tweet.
+**/
 function cullTweets(badges, tweets, callback) { 
    // console.log("LATEST TWEETS "+JSON.stringify(tweets));
     var culledTweets = [];
 
-    i= 0;
+    i = 0;
+
     async.each(tweets, function(tweet, callback) {
         //console.log("tweet.in_reply_to_status_id "+ tweet.in_reply_to_status_id);
         if (tweet.in_reply_to_status_id === null ) {
@@ -209,6 +213,7 @@ function processTweets(badges, tweets, callback) {
         async.each(tweets, function(tweet, callback) {
             console.log("Tweet ID STR "+tweets[0].id_str);
             console.log("Tweet ID "+tweet.id_str);
+            console.log("TWEET DATE "+tweet.created_at);
             console.log("Tweet Text "+tweet.text);
             console.log("TWEET URL "+ "https://twitter.com/"+tweet.user.screen_name+"/status/"+tweet.id_str);
                         
@@ -285,18 +290,61 @@ function processTweets(badges, tweets, callback) {
                                         callback(err);
                                     }
                                 });
-                            }/*,
+                            },
 
                             function(callback) { //see if it is a tweet_text_self badge and if postal code
 
-                                if (logic_function == "tweet_text_self") { 
+                                if (logic_function == "tweet_text_self") {  
+                                //only turned for this type of badge
 
-                                    // look for content like [14000FR] or [14000 FR] in tweet tweet.text
+                                    var postalCodeRegex = /(?<=\[).+?(?=\])/g;
+                                    var postalcode = tweet.text.match(postalCodeRegex);
+
+                                    console.log("POSTAL CODE "+postalcode);
+
+                                    if (postalcode) {
+                                        postalcode = postalcode.toString();
+                                        var geocodeVars = postalcode.split(" ");
+
+                                        if (geocodeVars.length == 2) { 
+                                            console.log("geocodeVars "+geocodeVars);
+
+                                            googleMapsClient.geocode({
+                                                components: {
+                                                    postal_code: geocodeVars[0],
+                                                    country: geocodeVars[1]
+                                                }
+                                            })
+                                            .asPromise()
+                                            .then((response) => {
+                                               // console.log(response.json.results);
+                                                results = response.json.results;
+
+                                                if (typeof results === 'object') {
+                                                    if (response.json.results[0]) {
+                                                        //console.log("Location "+JSON.stringify(response.json.results[0].geometry.location));
+
+                                                        callback(null,response.json.results[0].geometry.location);
+                                                    }
+                                                    else {
+                                                        callback(null,null);
+                                                    }
+                                                }
+
+                                            })
+                                            .catch((err) => {
+                                                console.log(err);
+                                                callback(err)
+                                            });
+                                        }
+                                        else {
+                                            console.log("Postal code not what is needed for Google geocoding");
+                                        }
+                                    }
                                 }
-                            }*/
-
-                            /**
-                            Using hosted PNGs for now instead of generating from SVG
+                            }/**,
+                            
+                            //Using hosted PNGs for now instead of generating from SVG
 
                             function(callback) { //png of badge image svg
 
@@ -336,6 +384,11 @@ function processTweets(badges, tweets, callback) {
                             var earners = results[0];
                             var evidenceUrl = results[1];
                             var badgeImage = results[2];
+                            var location = results[3];
+
+                            if (location) {
+                                console.log("LOCATION "+JSON.stringify(location));
+                            }
 
                             console.log("PROCESS EARNERS "+earners);  
 
@@ -403,6 +456,21 @@ function processTweets(badges, tweets, callback) {
                                                     "type": "hosted"
                                                 }
                                         });
+
+                                        if (location) {
+                                            var assertionObject = JSON.parse(assertion);
+                                            assertionObject['schema:location'] =
+                                                {
+                                                "@context": "https://openbadgespec.org/extensions/geoCoordinatesExtension/context.json",
+                                                "type": ["Extension", "extensions:GeoCoordinates", "schema:Place"],
+                                                "description": "Location provided by earner.",
+                                                "geo": {
+                                                    "latitude": location.lat,
+                                                    "longitude": location.lng
+                                                }
+                                            };
+                                            assertion = JSON.stringify(assertionObject);
+                                        }
 
                                         gists.edit(gist.id, {
                                                 "files": {
