@@ -339,7 +339,11 @@ function processTweets(badges, tweets, callback) {
                                         }
                                         else {
                                             console.log("Postal code not what is needed for Google geocoding");
+                                            callback(null,null);
                                         }
+                                    }
+                                    else {
+                                        callback(null,null);
                                     }
                                 }
                             }/**,
