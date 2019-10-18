@@ -411,6 +411,7 @@ function processTweets(badges, tweets, callback) {
                                                     }
                                                 }
                                             }).then(function(res){
+                                                console.log("Assertion Saved "+issuedDate);
                                                 callback(null, res.body);
                                         }).catch(function(err) {
                                             console.log("ERR UPDATING ASSERTION "+err);
