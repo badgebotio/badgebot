@@ -28,6 +28,6 @@
     "svgdom": "0.0.20",
     "svgpath": "^2.2.2",
     "twit": "^2.2.11",
-    "underscore": "^1.9.1"
+    "underscore": "^1.12.1"
   }
 }
